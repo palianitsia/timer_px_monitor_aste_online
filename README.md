@@ -1,7 +1,17 @@
+per v1 v2
+
 tkinter
 Pillow
 aiohttp
 mss
+numpy
+opencv-python
+
+per v3
+
+PyQt6
+PyQt6-WebEngine
+aiohttp
 numpy
 opencv-python
 
