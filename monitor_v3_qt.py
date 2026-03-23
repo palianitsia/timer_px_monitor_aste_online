@@ -121,17 +121,24 @@ class MonitorWorker(QObject):
     log_signal    = pyqtSignal(str)
     status_signal = pyqtSignal(int, bool, bool)
     done_signal   = pyqtSignal()
+    grab_signal   = pyqtSignal()
 
     def __init__(self, browser, id_asta, dess, soglia_min, soglia_max, rect_timer, rect_vincendo):
         super().__init__()
-        self.browser      = browser
-        self.id_asta      = id_asta
-        self.dess         = dess
-        self.soglia_min   = soglia_min
-        self.soglia_max   = soglia_max
-        self.rect_timer   = rect_timer
+        self.browser       = browser
+        self.id_asta       = id_asta
+        self.dess          = dess
+        self.soglia_min    = soglia_min
+        self.soglia_max    = soglia_max
+        self.rect_timer    = rect_timer
         self.rect_vincendo = rect_vincendo
-        self.running      = False
+        self.running       = False
+        self._frame        = None
+        self._frame_event  = threading.Event()
+
+    def receive_frame(self, bgr):
+        self._frame = bgr
+        self._frame_event.set()
 
     def crop(self, bgr, rect):
         if rect is None or rect.isNull():
@@ -144,9 +151,12 @@ class MonitorWorker(QObject):
         y2 = max(0, min(y + h, bh))
         return bgr[y1:y2, x1:x2]
 
-    def grab_browser(self):
-        pixmap = self.browser.grab()
-        return qpixmap_to_bgr(pixmap)
+    def request_frame(self):
+        self._frame_event.clear()
+        self._frame = None
+        self.grab_signal.emit()
+        self._frame_event.wait(timeout=2.0)
+        return self._frame
 
     async def fetch(self):
         url = build_url(self.id_asta)
@@ -166,7 +176,10 @@ class MonitorWorker(QObject):
         already_sent = False
         self.running = True
         while self.running:
-            bgr = self.grab_browser()
+            bgr = await asyncio.get_event_loop().run_in_executor(None, self.request_frame)
+            if bgr is None:
+                await asyncio.sleep(0.05)
+                continue
 
             crop_t = self.crop(bgr, self.rect_timer)
             red = count_red_pixels(crop_t) if crop_t is not None else 0
@@ -192,7 +205,7 @@ class MonitorWorker(QObject):
             else:
                 already_sent = False
 
-            await asyncio.sleep(0.03)
+            await asyncio.sleep(0.05)
 
         self.done_signal.emit()
 
@@ -494,6 +507,7 @@ class MainWindow(QMainWindow):
         self.worker.log_signal.connect(self.log)
         self.worker.status_signal.connect(self.update_status)
         self.worker.done_signal.connect(self.on_worker_done)
+        self.worker.grab_signal.connect(self.do_grab)
 
         self.worker_thread = threading.Thread(target=self.worker.start_loop, daemon=True)
         self.worker_thread.start()
@@ -504,6 +518,19 @@ class MainWindow(QMainWindow):
         self.btn_go.setEnabled(True)
         self.btn_stop.setEnabled(False)
         self.log("Monitoraggio fermato.")
+
+    def do_grab(self):
+        QTimer.singleShot(0, self._perform_grab)
+
+    def _perform_grab(self):
+        try:
+            pixmap = self.browser.grab()
+            bgr = qpixmap_to_bgr(pixmap)
+            if self.worker:
+                self.worker.receive_frame(bgr)
+        except Exception as e:
+            if self.worker:
+                self.worker.receive_frame(None)
 
     def on_worker_done(self):
         self.btn_go.setEnabled(True)
