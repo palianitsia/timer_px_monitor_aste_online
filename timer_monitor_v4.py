@@ -1,3 +1,7 @@
+#/== dev by palianitsia ==\
+
+#|ogni|utente|e|consapevole|di|eventuale|violazione|di|tos|durante|uso|del|software|si|prega|di|usare|software|solo|in|ambiente|di|test|
+
 import os
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-features=AttributionReporting --disable-logging --log-level=3"
 
