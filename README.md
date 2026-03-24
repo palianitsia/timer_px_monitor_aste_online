@@ -1,19 +1,10 @@
 per v1 v2
 
-tkinter
-Pillow
-aiohttp
-mss
-numpy
-opencv-python
+pip install tkinter Pillow aiohttp mss numpy opencv-python
 
-per v3
+per v3 - v4 
 
-PyQt6
-PyQt6-WebEngine
-aiohttp
-numpy
-opencv-python
+pip install PyQt6 PyQt6-WebEngine aiohttp numpy opencv-python
 
 crea un documento di testo e chiamalo "requirements.txt" al suo interno incolla le dipendenze descritte sopra e salva il file. esegui da persorso relativo "pip install -r requirements.txt" 
 
