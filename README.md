@@ -1,4 +1,4 @@
-per v1 v2
+per v1 - v2
 
 pip install tkinter Pillow aiohttp mss numpy opencv-python
 
